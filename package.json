@@ -6,6 +6,13 @@
 		"name": "David W."
 	},
 	"license": "MIT",
+	"homepage": "https://github.com/CarbonicSoda/vscode-istrainless/blob/master/README.md",
+	"bugs": {
+		"url": "https://github.com/CarbonicSoda/vscode-istrainless/issues",
+		"email": "carbonsoda@outlook.com"
+	},
+	"repository": "https://github.com/CarbonicSoda/vscode-istrainless",
+	"icon": "media/icon.png",
 	"engines": {
 		"vscode": "^1.70.0"
 	},
@@ -94,7 +101,7 @@
 		"test": "vscode-test"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.93.0",
+		"@types/vscode": "^1.70.0",
 		"@types/mocha": "^10.0.8",
 		"@types/node": "20.x",
 		"@typescript-eslint/eslint-plugin": "^8.7.0",
