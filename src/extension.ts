@@ -105,6 +105,7 @@ async function mainLoop(): Promise<void> {
 
 				timeTillMinibreak = minibreakTimeout * 60;
 				timer30 = 0;
+				breakTimerItem.color = null;
 				await updateBreakTimer();
 				updateTimerInterval = setInterval(updateBreakTimer, 1e3);
 				timerCorrectionInterval = setInterval(timerCorrection, 3e4);
