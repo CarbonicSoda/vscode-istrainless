@@ -1,82 +1,145 @@
 import * as vscode from "vscode";
 
-let statusBarItem: vscode.StatusBarItem;
-let active: boolean;
+let breakTimerItem: vscode.StatusBarItem;
+let breakLoopEnabled: boolean;
 
-export async function activate() {
-	active = true;
-
-	vscode.commands.registerCommand("istrainless.setBreakTimeout", async () => {
-		const input = await vscode.window.showInputBox({
-			title: "IstrainLess Break Timeout",
-			prompt: "Enter New Break Timeout in Minutes",
-			validateInput: (input) => {
-				const num = parseFloat(input);
-				if (isNaN(num)) return "Invalid Timeout";
-				if (num < 1) return "Timeout Too Short";
-			},
-		});
-		if (!input) return;
-		const config = vscode.workspace.getConfiguration("istrainless");
-		config.update("breakTimeout", parseFloat(input), true);
-	});
-	vscode.commands.registerCommand("istrainless.setBreakDuration", async () => {
-		const input = await vscode.window.showInputBox({
-			title: "IstrainLess Break Duration",
-			prompt: "Enter New Break Duration in Minutes",
-			validateInput: (input) => {
-				const num = parseFloat(input);
-				if (isNaN(num)) return "Invalid Duration";
-				if (num < 0.25) return "Duration Too Short";
-			},
-		});
-		if (!input) return;
-		const config = vscode.workspace.getConfiguration("istrainless");
-		config.update("breakDuration", parseFloat(input), true);
-	});
-
-	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 0);
-	statusBarItem.name = "IstrainLess";
-	statusBarItem.show();
-
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+	breakLoopEnabled = true;
+	registerCommands(context);
+	createBreakTimerItem();
 	mainLoop();
 }
 
-async function mainLoop() {
-	while (active) {
-		const config = vscode.workspace.getConfiguration("istrainless");
-		const breakTimeout: number = config.get("breakTimeout");
-		const breakDuration: number = config.get("breakDuration");
+export async function deactivate(): Promise<void> {
+	breakLoopEnabled = false;
+	breakTimerItem?.dispose();
+	breakTimerItem = null;
+}
 
-		let timeLeft = breakTimeout * 60;
-		const updateStatusBarItem = async () => {
-			let time = await getTime(timeLeft--);
-			statusBarItem.text = `$(watch) ${time}`;
-			statusBarItem.tooltip = `${time} Until Next Break`;
-			statusBarItem.backgroundColor =
+async function registerCommands(context: vscode.ExtensionContext): Promise<void> {
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			"istrainless.setMinibreakTimeout",
+			await getTimeFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
+		),
+		vscode.commands.registerCommand(
+			"istrainless.setMinibreakDuration",
+			await getTimeFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
+		),
+		vscode.commands.registerCommand(
+			"istrainless.setBreakTimeout",
+			await getTimeFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
+		),
+		vscode.commands.registerCommand(
+			"istrainless.setBreakDuration",
+			await getTimeFactory("Minibreak Timeout", { min: 5, max: 120 }, false, "breakDuration"),
+		),
+	);
+}
+
+async function createBreakTimerItem(): Promise<void> {
+	breakTimerItem?.dispose();
+	breakTimerItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, -1);
+	breakTimerItem.name = "IstrainLess Timer";
+	breakTimerItem.show();
+}
+
+async function mainLoop(): Promise<void> {
+	let config = vscode.workspace.getConfiguration("istrainless");
+	vscode.workspace.onDidChangeConfiguration(async (ev) => {
+		if (ev.affectsConfiguration("istrainless")) config = vscode.workspace.getConfiguration("istrainless");
+	});
+	while (breakLoopEnabled) {
+		const minibreakTimeout: number = config.get("minibreakTimeout");
+		const breakTimeout: number = config.get("breakTimeout");
+
+		let timeTillMinibreak = minibreakTimeout * 60;
+		let timeTillBreak = breakTimeout * 60;
+		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
+
+		const updateBreakTimer = async () => {
+			const [minibreakTime, breakTime] = [timeTillMinibreak--, timeTillBreak--];
+			const breakType = nextIsMinibreak ? "Minibreak" : "Break";
+			const timeLeft = nextIsMinibreak ? minibreakTime : breakTime;
+
+			breakTimerItem.text = `$(watch) ${breakType} ${await getTime(timeLeft)}`;
+			breakTimerItem.tooltip = new vscode.MarkdownString(
+				`Next Minibreak:  \n**${
+					nextIsMinibreak ? await getTime(minibreakTime) : "--:--"
+				}**\n\nNext Break:  \n**${await getTime(breakTime)}**`,
+			);
+			breakTimerItem.backgroundColor =
 				timeLeft < 60 ? new vscode.ThemeColor("statusBarItem.warningBackground") : null;
 		};
-		statusBarItem.color = null;
-		await updateStatusBarItem();
-		const timeElapse = setInterval(updateStatusBarItem, 1e3);
+		breakTimerItem.color = null;
+		await updateBreakTimer();
+		let updateTimerInterval = setInterval(updateBreakTimer, 1e3);
 
-		await sleep(breakTimeout * 6e4);
-		clearInterval(timeElapse);
-		statusBarItem.text = statusBarItem.tooltip = "On Break";
-		statusBarItem.color = new vscode.ThemeColor("statusBarItem.warningForeground");
-		statusBarItem.backgroundColor = null;
+		await setTimedInterval(
+			breakTimeout * 6e4,
+			async () => {
+				clearInterval(updateTimerInterval);
+				breakTimerItem.text = breakTimerItem.tooltip = "On Minibreak";
+				breakTimerItem.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+				breakTimerItem.backgroundColor = null;
+				await startBreakSession(config.get("minibreakDuration"));
+				timeTillMinibreak = minibreakTimeout * 60;
+				await updateBreakTimer();
+				updateTimerInterval = setInterval(updateBreakTimer, 1e3);
+			},
+			minibreakTimeout * 6e4,
+			{
+				cleanup: async () => (nextIsMinibreak = false),
+			},
+		);
 
-		await startBreakSession(breakDuration);
+		clearInterval(updateTimerInterval);
+		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
+		breakTimerItem.color = new vscode.ThemeColor("statusBarItem.warningForeground");
+		breakTimerItem.backgroundColor = null;
+		await startBreakSession(config.get("breakDuration"));
 	}
 }
 
-async function startBreakSession(duration: number) {
+async function getTimeFactory(
+	name: string,
+	options: { min: number; max: number },
+	isTimeout: boolean,
+	configName: string,
+): Promise<() => Promise<void>> {
+	const validateInput = (input: string) => {
+		const num = parseFloat(input);
+		if (isNaN(num)) return `Invalid ${name}`;
+		if (num < options.min) return `${name} Too Short. ${isTimeout ? "Counterproductive" : "Eyestrain"} alert!`;
+		if (num > options.max) return `${name} Too Long. ${isTimeout ? "Eyestrain" : "Counterproductive"} alert!`;
+	};
+	return async () => {
+		const input = await vscode.window.showInputBox({
+			title: `IstrainLess: ${name}`,
+			prompt: `Enter New ${name} in Minutes`,
+			validateInput: validateInput,
+		});
+		if (!input) return;
+		const config = vscode.workspace.getConfiguration("istrainless");
+		config.update(configName, parseFloat(input), true);
+	};
+}
+
+async function startBreakSession(duration: number): Promise<void> {
 	const quotes = [
-		"Peek Outside the Window for Some Shaft of Light!",
-		"Take the Time to Do Some Stretching~",
-		"Good Time to Wash Your Face!",
-		"Touch Some Grass!",
+		"Closing your eyes allows you to see the world more clearly.",
+		"Gaze into the distance, let your eyes relax and wander. This far-off focus will ease the strain.",
+		"Gaze not too long into the brightness, lest your eyes be blinded. Rest them upon gentler things, that they may behold the beauty all around with clarity and wonder.",
+		"In the stillness of closing the eyes, the soul finds the freedom to soar.",
+		"Let your eyes wander and feast upon the world, but remember to give them moments of tranquil rest, for the eyes grow weary from constantly seeking.",
+		"Rest your eyes, let them wander and explore the world at their own pace.",
+		"Rest your eyes, they work hard all day.",
+		"The best way to rest your eyes is to let them gaze upon something beautiful.",
+		"When your eyes feel tired, lift your gaze and let it drift to the horizon. This long-distance view will soothe and restore them.",
+		"Your eyes are the most precious jewels you will ever own.",
 	];
+	const breakMin = duration * 60;
+	const breakMs = breakMin * 1e3;
 
 	const panel = vscode.window.createWebviewPanel("istrainless.break", "IstrainLess", vscode.ViewColumn.One, {
 		enableScripts: true,
@@ -102,9 +165,12 @@ async function startBreakSession(duration: number) {
 				align-items: center;
 			}
 			#quote {
+				width: 85%;
+				padding-bottom: 2.5%;
 				font-family: var(--vscode-editor-font-family);
 				font-weight: var(--vscode-editor-font-weight);
 				font-size: calc(var(--vscode-editor-font-size) * 1.3);
+				text-align: center;
 				color: var(--vscode-editor-foreground);
 			}
 			@keyframes timeout {
@@ -115,7 +181,7 @@ async function startBreakSession(duration: number) {
 				height: 4%;
 				border-radius: 3px;
 				background-color: var(--vscode-editor-foreground);
-				animation: timeout ${duration * 60}s linear;
+				animation: timeout ${breakMin}s linear;
 			}
 			#timeout {
 				font-family: var(--vscode-editor-font-family);
@@ -136,31 +202,42 @@ async function startBreakSession(duration: number) {
 		</div>
 	</body>
 	<script>
-		let timeLeft = ${Math.round(duration * 60)};
+		let timeLeft = ${Math.round(breakMin)};
 		const timeout = document.getElementById("timeout");
-		const countdown = setInterval(async () => timeout.textContent = await getTime(timeLeft--), 1e3);
-		setTimeout(async () => clearInterval(countdown), ${duration * 6e4});
-		(async () => timeout.textContent = await getTime(timeLeft--))();
+		(async () => (timeout.textContent = await getTime(timeLeft--)))();
+		setInterval(async () => (timeout.textContent = await getTime(timeLeft--)), 1e3);
 	</script>
 	</html>`;
 
 	const forceReveal = panel.onDidChangeViewState(async () => panel.reveal(vscode.ViewColumn.One));
-	await sleep(duration * 6e4);
+	await sleep(breakMs);
 	forceReveal.dispose();
 	panel.dispose();
 }
 
-export async function deactivate() {
-	active = false;
-	statusBarItem?.dispose();
+async function sleep(ms: number): Promise<null> {
+	return await new Promise((res) => setTimeout(async () => res(null), ms));
 }
 
-async function sleep(ms: number) {
-	return await new Promise((res) => setTimeout(res, ms));
+async function setTimedInterval(
+	timeout: number,
+	callback: () => Promise<any>,
+	ms: number,
+	options?: { invokeOnStart?: boolean; cleanup?: () => Promise<any> },
+): Promise<void> {
+	const rep = Math.round(timeout / ms) - 1;
+	if (options?.invokeOnStart) await callback();
+	for (let i = 0; i < rep; i++) {
+		await sleep(ms);
+		await callback();
+	}
+	await options?.cleanup?.();
+	await sleep(timeout - ms * rep);
 }
 
-async function getTime(sec: number) {
+async function getTime(sec: number): Promise<string> {
 	const m = Math.trunc(sec / 60);
 	const s = Math.trunc(sec - m * 60);
-	return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+	return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+

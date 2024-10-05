@@ -1,50 +1,90 @@
 {
 	"name": "istrainless",
-	"displayName": "IstrainLess",
-	"description": "Away From Eye Strain",
 	"version": "0.0.1",
+	"publisher": "carbonsoda",
+	"author": {
+		"name": "David W."
+	},
+	"license": "MIT",
 	"engines": {
 		"vscode": "^1.70.0"
 	},
+	"displayName": "IstrainLess",
+	"description": "Away From Eyestrain",
 	"categories": [
 		"Other"
 	],
-	"activationEvents": [
-		"onStartupFinished"
+	"keywords": [
+		"Break",
+		"Rest",
+		"Eyestrain"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
+				"command": "istrainless.setMinibreakTimeout",
+				"title": "Set Minibreak Timeout",
+				"category": "IstrainLess"
+			},
+			{
+				"command": "istrainless.setMinibreakDuration",
+				"title": "Set Minibreak Duration",
+				"category": "IstrainLess"
+			},
+			{
 				"command": "istrainless.setBreakTimeout",
-				"title": "IstrainLess: Set Break Timeout"
+				"title": "Set Break Timeout",
+				"category": "IstrainLess"
 			},
 			{
 				"command": "istrainless.setBreakDuration",
-				"title": "IstrainLess: Set Break Duration"
+				"title": "Set Break Duration",
+				"category": "IstrainLess"
 			}
 		],
 		"configuration": [
 			{
 				"properties": {
+					"istrainless.minibreakTimeout": {
+						"type": "number",
+						"default": 10,
+						"description": "Minutes to wait between minibreaks.",
+						"minimum": 5,
+						"maximum": 90,
+						"order": 1
+					},
+					"istrainless.minibreakDuration": {
+						"type": "number",
+						"default": 2,
+						"description": "How many minutes a minibreak lasts.",
+						"minimum": 0.25,
+						"maximum": 60,
+						"order": 2
+					},
 					"istrainless.breakTimeout": {
 						"type": "number",
-						"default": 15,
+						"default": 40,
 						"description": "Minutes to wait between breaks.",
-						"minimum": 1,
-						"order": 1
+						"minimum": 15,
+						"maximum": 150,
+						"order": 3
 					},
 					"istrainless.breakDuration": {
 						"type": "number",
-						"default": 5,
+						"default": 15,
 						"description": "How many minutes a break lasts.",
-						"minimum": 0.25,
-						"order": 2
+						"minimum": 5,
+						"maximum": 120,
+						"order": 4
 					}
 				}
 			}
 		]
 	},
+	"activationEvents": [
+		"onStartupFinished"
+	],
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
