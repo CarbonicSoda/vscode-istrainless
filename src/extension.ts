@@ -61,10 +61,12 @@ async function mainLoop(): Promise<void> {
 	});
 	while (breakLoopEnabled) {
 		const minibreakTimeout: number = config.get("minibreakTimeout");
-		const breakTimeout: number = config.get("breakTimeout");
+		let breakTimeout: number = config.get("breakTimeout");
+		if (breakTimeout < minibreakTimeout) breakTimeout = minibreakTimeout;
 
 		let timeTillMinibreak = minibreakTimeout * 60;
 		let timeTillBreak = breakTimeout * 60;
+		let timer30 = 0;
 		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
 
 		const updateBreakTimer = async () => {
@@ -80,21 +82,31 @@ async function mainLoop(): Promise<void> {
 			);
 			breakTimerItem.backgroundColor = timeLeft < 60 ? new ThemeColor("statusBarItem.warningBackground") : null;
 		};
+		const timerCorrection = async () => {
+			timer30++;
+			timeTillMinibreak = minibreakTimeout * 60 - 30 * timer30 - 1;
+			timeTillBreak = breakTimeout * 60 - 30 * timer30 - 1;
+		};
 		breakTimerItem.color = null;
 		await updateBreakTimer();
 		let updateTimerInterval = setInterval(updateBreakTimer, 1e3);
+		let timerCorrectionInterval = setInterval(timerCorrection, 3e4);
 
 		await setTimedInterval(
 			breakTimeout * 6e4,
 			async () => {
 				clearInterval(updateTimerInterval);
+				clearInterval(timerCorrectionInterval);
+
 				breakTimerItem.text = breakTimerItem.tooltip = "On Minibreak";
 				breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
 				breakTimerItem.backgroundColor = null;
 				await startBreakSession(config.get("minibreakDuration"));
+
 				timeTillMinibreak = minibreakTimeout * 60;
 				await updateBreakTimer();
 				updateTimerInterval = setInterval(updateBreakTimer, 1e3);
+				timerCorrectionInterval = setInterval(timerCorrection, 3e4);
 			},
 			minibreakTimeout * 6e4,
 			{
@@ -103,6 +115,7 @@ async function mainLoop(): Promise<void> {
 		);
 
 		clearInterval(updateTimerInterval);
+		clearInterval(timerCorrectionInterval);
 		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
 		breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
 		breakTimerItem.backgroundColor = null;
@@ -147,8 +160,8 @@ async function startBreakSession(duration: number): Promise<void> {
 		"When your eyes feel tired, lift your gaze and let it drift to the horizon. This long-distance view will soothe and restore them.",
 		"Your eyes are the most precious jewels you will ever own.",
 	];
-	const breakMin = duration * 60;
-	const breakMs = breakMin * 1e3;
+	const breakSec = duration * 60;
+	const breakMs = breakSec * 1e3;
 
 	const panel = window.createWebviewPanel("istrainless.break", "IstrainLess", ViewColumn.One, {
 		enableScripts: true,
@@ -190,7 +203,7 @@ async function startBreakSession(duration: number): Promise<void> {
 				height: 4%;
 				border-radius: 3px;
 				background-color: var(--vscode-editor-foreground);
-				animation: timeout ${breakMin}s linear;
+				animation: timeout ${breakSec}s linear;
 			}
 			#timeout {
 				font-family: var(--vscode-editor-font-family);
@@ -211,10 +224,13 @@ async function startBreakSession(duration: number): Promise<void> {
 		</div>
 	</body>
 	<script>
-		let timeLeft = ${Math.round(breakMin)};
+		const sec = ${Math.round(breakSec)};
+		let timeLeft = sec;
+		let timer30 = 0;
 		const timeout = document.getElementById("timeout");
 		(async () => (timeout.textContent = await getTime(timeLeft--)))();
 		setInterval(async () => (timeout.textContent = await getTime(timeLeft--)), 1e3);
+		setInterval(async () => (timeLeft = sec - 30 * ++timer30 - 1), 3e4);
 	</script>
 	</html>`;
 
@@ -232,10 +248,10 @@ async function setTimedInterval(
 	timeout: number,
 	callback: () => Promise<any>,
 	ms: number,
-	options?: { invokeOnStart?: boolean; cleanup?: () => Promise<any> },
+	options?: { cleanup?: () => Promise<any> },
 ): Promise<void> {
-	const rep = Math.round(timeout / ms) - 1;
-	if (options?.invokeOnStart) await callback();
+	let rep = Math.round(timeout / ms) - 1;
+	if (rep < 0) rep = 0;
 	for (let i = 0; i < rep; i++) {
 		await sleep(ms);
 		await callback();

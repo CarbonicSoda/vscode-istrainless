@@ -1,6 +1,6 @@
 {
 	"name": "istrainless",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"publisher": "carbonsoda",
 	"author": {
 		"name": "David W."
@@ -79,7 +79,7 @@
 					},
 					"istrainless.breakDuration": {
 						"type": "number",
-						"default": 15,
+						"default": 10,
 						"description": "How many minutes a break lasts.",
 						"minimum": 5,
 						"maximum": 120,
