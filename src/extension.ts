@@ -104,6 +104,7 @@ async function mainLoop(): Promise<void> {
 				await startBreakSession(config.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
+				timer30 = 0;
 				await updateBreakTimer();
 				updateTimerInterval = setInterval(updateBreakTimer, 1e3);
 				timerCorrectionInterval = setInterval(timerCorrection, 3e4);
