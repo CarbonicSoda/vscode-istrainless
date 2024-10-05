@@ -13,7 +13,7 @@ To keep you away from *eyestrain*!
 ## Customizations
 
 *Minibreak*s' and *Break*s' **timeout** and **duration** could be modified...
-- Through commands (*Ctrl+Shift+P*): *IstrainLess: xxx*
+- Through commands (*Ctrl+Shift+P*): "*IstrainLess: xxx*"
 - Directly in settings
 
 ###
