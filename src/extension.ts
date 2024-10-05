@@ -13,41 +13,41 @@ import {
 let breakTimerItem: StatusBarItem;
 let breakLoopEnabled: boolean;
 
-export async function activate(context: ExtensionContext): Promise<void> {
+export function activate(context: ExtensionContext): void {
 	breakLoopEnabled = true;
 	registerCommands(context);
 	createBreakTimerItem();
 	mainLoop();
 }
 
-export async function deactivate(): Promise<void> {
+export function deactivate(): void {
 	breakLoopEnabled = false;
 	breakTimerItem?.dispose();
 	breakTimerItem = null;
 }
 
-async function registerCommands(context: ExtensionContext): Promise<void> {
+function registerCommands(context: ExtensionContext): void {
 	context.subscriptions.push(
 		commands.registerCommand(
 			"istrainless.setMinibreakTimeout",
-			await getTimeFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
+			getTimeFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setMinibreakDuration",
-			await getTimeFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
+			getTimeFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakTimeout",
-			await getTimeFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
+			getTimeFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakDuration",
-			await getTimeFactory("Minibreak Timeout", { min: 5, max: 120 }, false, "breakDuration"),
+			getTimeFactory("Minibreak Timeout", { min: 5, max: 120 }, false, "breakDuration"),
 		),
 	);
 }
 
-async function createBreakTimerItem(): Promise<void> {
+function createBreakTimerItem(): void {
 	breakTimerItem?.dispose();
 	breakTimerItem = window.createStatusBarItem(StatusBarAlignment.Right, -1);
 	breakTimerItem.name = "IstrainLess Timer";
@@ -74,13 +74,13 @@ async function mainLoop(): Promise<void> {
 			const breakType = nextIsMinibreak ? "Minibreak" : "Break";
 			const timeLeft = nextIsMinibreak ? minibreakTime : breakTime;
 
-			breakTimerItem.text = `$(watch) ${breakType} ${await getTime(timeLeft)}`;
+			breakTimerItem.text = `$(watch) ${breakType} ${getTime(timeLeft)}`;
 			breakTimerItem.tooltip = new MarkdownString(
 				`Next Minibreak:  \n**${
-					nextIsMinibreak ? await getTime(minibreakTime) : "--:--"
-				}**\n\nNext Break:  \n**${await getTime(breakTime)}**`,
+					nextIsMinibreak ? getTime(minibreakTime) : "--:--"
+				}**\n\nNext Break:  \n**${getTime(breakTime)}**`,
 			);
-			breakTimerItem.backgroundColor = timeLeft < 60 ? new ThemeColor("statusBarItem.warningBackground") : null;
+			breakTimerItem.color = timeLeft < 60 ? new ThemeColor("statusBarItem.warningForeground") : null;
 		};
 		const timerCorrection = async () => {
 			timer30++;
@@ -99,8 +99,6 @@ async function mainLoop(): Promise<void> {
 				clearInterval(timerCorrectionInterval);
 
 				breakTimerItem.text = breakTimerItem.tooltip = "On Minibreak";
-				breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
-				breakTimerItem.backgroundColor = null;
 				await startBreakSession(config.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
@@ -120,17 +118,16 @@ async function mainLoop(): Promise<void> {
 		clearInterval(timerCorrectionInterval);
 		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
 		breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
-		breakTimerItem.backgroundColor = null;
 		await startBreakSession(config.get("breakDuration"));
 	}
 }
 
-async function getTimeFactory(
+function getTimeFactory(
 	name: string,
 	options: { min: number; max: number },
 	isTimeout: boolean,
 	configName: string,
-): Promise<() => Promise<void>> {
+): () => Promise<void> {
 	const validateInput = (input: string) => {
 		const num = parseFloat(input);
 		if (isNaN(num)) return `Invalid ${name}`;
@@ -230,8 +227,8 @@ async function startBreakSession(duration: number): Promise<void> {
 		let timeLeft = sec;
 		let timer30 = 0;
 		const timeout = document.getElementById("timeout");
-		(async () => (timeout.textContent = await getTime(timeLeft--)))();
-		setInterval(async () => (timeout.textContent = await getTime(timeLeft--)), 1e3);
+		(async () => (timeout.textContent = getTime(timeLeft--)))();
+		setInterval(async () => (timeout.textContent = getTime(timeLeft--)), 1e3);
 		setInterval(async () => (timeLeft = sec - 30 * ++timer30 - 1), 3e4);
 	</script>
 	</html>`;
@@ -262,7 +259,7 @@ async function setTimedInterval(
 	await sleep(timeout - ms * rep);
 }
 
-async function getTime(sec: number): Promise<string> {
+function getTime(sec: number): string {
 	const m = Math.trunc(sec / 60);
 	const s = Math.trunc(sec - m * 60);
 	return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
