@@ -1,4 +1,4 @@
-## Features
+# Features
 A set-time break reminder with:
 - *Minibreaks* and *Breaks*
 - Friendly break timer in status bar
@@ -9,7 +9,7 @@ To keep you away from *eyestrain*!
 
 ![SHOWCASE](https://github.com/CarbonicSoda/vscode-istrainless/blob/master/media/showcase.gif?raw=true)
 
->*Closing break window will be seen as skipping the current break.*
+>*Closing the break window early will be seen as a skip.*
 
 ### Customizations
 *Minibreaks*' and *Breaks*' **timeout** and **duration** could be modified...
