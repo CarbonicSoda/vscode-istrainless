@@ -10,7 +10,11 @@ import {
 	workspace,
 } from "vscode";
 
-let breakTimerItem: StatusBarItem;
+let breakTimerItem: StatusBarItem | null;
+let intervals: {
+	updateTimer?: NodeJS.Timeout;
+	timerCorrection?: NodeJS.Timeout;
+} = {};
 let breakLoopEnabled: boolean;
 
 export function activate(context: ExtensionContext): void {
@@ -22,8 +26,10 @@ export function activate(context: ExtensionContext): void {
 
 export function deactivate(): void {
 	breakLoopEnabled = false;
-	breakTimerItem?.dispose();
-	breakTimerItem = null;
+	clearInterval(intervals.updateTimer);
+	clearInterval(intervals.timerCorrection);
+	breakTimerItem.hide();
+	breakTimerItem.dispose();
 }
 
 function registerCommands(context: ExtensionContext): void {
@@ -56,9 +62,10 @@ function createBreakTimerItem(): void {
 
 async function mainLoop(): Promise<void> {
 	let config = workspace.getConfiguration("istrainless");
-	workspace.onDidChangeConfiguration(async (ev) => {
+	workspace.onDidChangeConfiguration((ev) => {
 		if (ev.affectsConfiguration("istrainless")) config = workspace.getConfiguration("istrainless");
 	});
+
 	while (breakLoopEnabled) {
 		const minibreakTimeout: number = config.get("minibreakTimeout");
 		let breakTimeout: number = config.get("breakTimeout");
@@ -66,10 +73,10 @@ async function mainLoop(): Promise<void> {
 
 		let timeTillMinibreak = minibreakTimeout * 60;
 		let timeTillBreak = breakTimeout * 60;
-		let timer30 = 0;
+		let time30 = 0;
 		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
 
-		const updateBreakTimer = async () => {
+		const updateTimer = () => {
 			const [minibreakTime, breakTime] = [timeTillMinibreak--, timeTillBreak--];
 			const breakType = nextIsMinibreak ? "Minibreak" : "Break";
 			const timeLeft = nextIsMinibreak ? minibreakTime : breakTime;
@@ -82,43 +89,43 @@ async function mainLoop(): Promise<void> {
 			);
 			breakTimerItem.color = timeLeft < 60 ? new ThemeColor("statusBarItem.warningForeground") : null;
 		};
-		const timerCorrection = async () => {
-			timer30++;
-			timeTillMinibreak = minibreakTimeout * 60 - 30 * timer30 - 1;
-			timeTillBreak = breakTimeout * 60 - 30 * timer30 - 1;
+		const timerCorrection = () => {
+			time30++;
+			timeTillMinibreak = minibreakTimeout * 60 - 30 * time30 - 1;
+			timeTillBreak = breakTimeout * 60 - 30 * time30 - 1;
 		};
 		breakTimerItem.color = null;
-		await updateBreakTimer();
-		let updateTimerInterval = setInterval(updateBreakTimer, 1e3);
-		let timerCorrectionInterval = setInterval(timerCorrection, 3e4);
+		updateTimer();
+		intervals.updateTimer = setInterval(updateTimer, 1e3);
+		intervals.timerCorrection = setInterval(timerCorrection, 3e4);
 
 		await setTimedInterval(
 			breakTimeout * 6e4,
 			async () => {
-				clearInterval(updateTimerInterval);
-				clearInterval(timerCorrectionInterval);
+				clearInterval(intervals.updateTimer);
+				clearInterval(intervals.timerCorrection);
 
 				breakTimerItem.text = breakTimerItem.tooltip = "On Minibreak";
-				await startBreakSession(config.get("minibreakDuration"));
+				await breakSession(config.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
-				timer30 = 0;
+				time30 = 0;
 				breakTimerItem.color = null;
-				await updateBreakTimer();
-				updateTimerInterval = setInterval(updateBreakTimer, 1e3);
-				timerCorrectionInterval = setInterval(timerCorrection, 3e4);
+				updateTimer();
+				intervals.updateTimer = setInterval(updateTimer, 1e3);
+				intervals.timerCorrection = setInterval(timerCorrection, 3e4);
 			},
 			minibreakTimeout * 6e4,
 			{
-				cleanup: async () => (nextIsMinibreak = false),
+				cleanup: () => (nextIsMinibreak = false),
 			},
 		);
 
-		clearInterval(updateTimerInterval);
-		clearInterval(timerCorrectionInterval);
+		clearInterval(intervals.updateTimer);
+		clearInterval(intervals.timerCorrection);
 		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
 		breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
-		await startBreakSession(config.get("breakDuration"));
+		await breakSession(config.get("breakDuration"));
 	}
 }
 
@@ -131,8 +138,11 @@ function getTimeFactory(
 	const validateInput = (input: string) => {
 		const num = parseFloat(input);
 		if (isNaN(num)) return `Invalid ${name}`;
-		if (num < options.min) return `${name} Too Short. ${isTimeout ? "Counterproductive" : "Eyestrain"} alert!`;
-		if (num > options.max) return `${name} Too Long. ${isTimeout ? "Eyestrain" : "Counterproductive"} alert!`;
+		const rangePrompt = `Value should be between ${options.min} and ${options.max}`;
+		if (num < options.min)
+			return `${name} too short. ${isTimeout ? "Counterproductive" : "Eyestrain"} alert! ${rangePrompt}`;
+		if (num > options.max)
+			return `${name} too long. ${isTimeout ? "Eyestrain" : "Counterproductive"} alert! ${rangePrompt}`;
 	};
 	return async () => {
 		const input = await window.showInputBox({
@@ -142,11 +152,11 @@ function getTimeFactory(
 		});
 		if (!input) return;
 		const config = workspace.getConfiguration("istrainless");
-		config.update(configName, parseFloat(input), true);
+		await config.update(configName, parseFloat(input), true);
 	};
 }
 
-async function startBreakSession(duration: number): Promise<void> {
+async function breakSession(duration: number): Promise<void> {
 	const quotes = [
 		"Closing your eyes allows you to see the world more clearly.",
 		"Gaze into the distance, let your eyes relax and wander. This far-off focus will ease the strain.",
@@ -212,7 +222,7 @@ async function startBreakSession(duration: number): Promise<void> {
 			}
 		</style>
 		<script>
-			${getTime}
+			const getTime = ${getTime};
 		</script>
 	</head>
 	<body>
@@ -223,31 +233,37 @@ async function startBreakSession(duration: number): Promise<void> {
 		</div>
 	</body>
 	<script>
+		const timeout = document.getElementById("timeout");
 		const sec = ${Math.round(breakSec)};
 		let timeLeft = sec;
-		let timer30 = 0;
-		const timeout = document.getElementById("timeout");
-		(async () => (timeout.textContent = getTime(timeLeft--)))();
-		setInterval(async () => (timeout.textContent = getTime(timeLeft--)), 1e3);
-		setInterval(async () => (timeLeft = sec - 30 * ++timer30 - 1), 3e4);
+		let time30 = 0;
+		timeout.textContent = getTime(timeLeft--);
+		setInterval(() => (timeout.textContent = getTime(timeLeft--)), 1e3);
+		setInterval(() => (timeLeft = sec - 30 * ++time30 - 1), 3e4);
 	</script>
 	</html>`;
 
-	const forceReveal = panel.onDidChangeViewState(async () => panel.reveal(ViewColumn.One));
-	await sleep(breakMs);
-	forceReveal.dispose();
-	panel.dispose();
+	const forceReveal = panel.onDidChangeViewState(() => panel.reveal(ViewColumn.One));
+	return await new Promise(async (res) => {
+		const manualEnd = panel.onDidDispose(() => {
+			forceReveal.dispose();
+			manualEnd.dispose();
+			res();
+		});
+		await sleep(breakMs);
+		panel.dispose();
+	});
 }
 
-async function sleep(ms: number): Promise<null> {
-	return await new Promise((res) => setTimeout(async () => res(null), ms));
+async function sleep(ms: number): Promise<void> {
+	return await new Promise((res) => setTimeout(res, ms));
 }
 
 async function setTimedInterval(
 	timeout: number,
-	callback: () => Promise<any>,
+	callback: () => any,
 	ms: number,
-	options?: { cleanup?: () => Promise<any> },
+	options?: { cleanup?: () => any },
 ): Promise<void> {
 	let rep = Math.round(timeout / ms) - 1;
 	if (rep < 0) rep = 0;
