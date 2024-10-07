@@ -28,7 +28,6 @@ export function deactivate(): void {
 	breakLoopEnabled = false;
 	clearInterval(intervals.updateTimer);
 	clearInterval(intervals.timerCorrection);
-	breakTimerItem.hide();
 	breakTimerItem.dispose();
 }
 
@@ -73,6 +72,7 @@ async function mainLoop(): Promise<void> {
 
 		let timeTillMinibreak = minibreakTimeout * 60;
 		let timeTillBreak = breakTimeout * 60;
+		let miniTime30 = 0;
 		let time30 = 0;
 		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
 
@@ -90,9 +90,9 @@ async function mainLoop(): Promise<void> {
 			breakTimerItem.color = timeLeft < 60 ? new ThemeColor("statusBarItem.warningForeground") : null;
 		};
 		const timerCorrection = () => {
-			time30++;
-			timeTillMinibreak = minibreakTimeout * 60 - 30 * time30 - 1;
-			timeTillBreak = breakTimeout * 60 - 30 * time30 - 1;
+			miniTime30++, time30++;
+			timeTillMinibreak = minibreakTimeout * 60 - 30 * miniTime30;
+			timeTillBreak = breakTimeout * 60 - 30 * time30;
 		};
 		breakTimerItem.color = null;
 		updateTimer();
@@ -109,7 +109,7 @@ async function mainLoop(): Promise<void> {
 				await breakSession(config.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
-				time30 = 0;
+				miniTime30 = 0;
 				breakTimerItem.color = null;
 				updateTimer();
 				intervals.updateTimer = setInterval(updateTimer, 1e3);
