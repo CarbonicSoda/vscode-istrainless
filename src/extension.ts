@@ -35,19 +35,39 @@ function registerCommands(context: ExtensionContext): void {
 	context.subscriptions.push(
 		commands.registerCommand(
 			"istrainless.setMinibreakTimeout",
-			getTimeFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
+			getTimeFactory(
+				"Minibreak Timeout",
+				{ min: 5, max: 90 },
+				true,
+				"minibreakTimeout",
+			),
 		),
 		commands.registerCommand(
 			"istrainless.setMinibreakDuration",
-			getTimeFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
+			getTimeFactory(
+				"Minibreak Duration",
+				{ min: 0.25, max: 60 },
+				false,
+				"minibreakDuration",
+			),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakTimeout",
-			getTimeFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
+			getTimeFactory(
+				"Break Timeout",
+				{ min: 15, max: 150 },
+				true,
+				"breakTimeout",
+			),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakDuration",
-			getTimeFactory("Minibreak Timeout", { min: 5, max: 120 }, false, "breakDuration"),
+			getTimeFactory(
+				"Minibreak Timeout",
+				{ min: 1, max: 30 },
+				false,
+				"breakDuration",
+			),
 		),
 	);
 }
@@ -62,7 +82,8 @@ function createBreakTimerItem(): void {
 async function mainLoop(): Promise<void> {
 	let config = workspace.getConfiguration("istrainless");
 	workspace.onDidChangeConfiguration((ev) => {
-		if (ev.affectsConfiguration("istrainless")) config = workspace.getConfiguration("istrainless");
+		if (ev.affectsConfiguration("istrainless"))
+			config = workspace.getConfiguration("istrainless");
 	});
 
 	while (breakLoopEnabled) {
@@ -77,7 +98,10 @@ async function mainLoop(): Promise<void> {
 		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
 
 		const updateTimer = () => {
-			const [minibreakTime, breakTime] = [timeTillMinibreak--, timeTillBreak--];
+			const [minibreakTime, breakTime] = [
+				timeTillMinibreak--,
+				timeTillBreak--,
+			];
 			const breakType = nextIsMinibreak ? "Minibreak" : "Break";
 			const timeLeft = nextIsMinibreak ? minibreakTime : breakTime;
 
@@ -87,7 +111,10 @@ async function mainLoop(): Promise<void> {
 					nextIsMinibreak ? getTime(minibreakTime) : "--:--"
 				}**\n\nNext Break:  \n**${getTime(breakTime)}**`,
 			);
-			breakTimerItem.color = timeLeft < 60 ? new ThemeColor("statusBarItem.warningForeground") : null;
+			breakTimerItem.color =
+				timeLeft < 60
+					? new ThemeColor("statusBarItem.warningForeground")
+					: null;
 		};
 		const timerCorrection = () => {
 			miniTime30++, time30++;
@@ -124,7 +151,9 @@ async function mainLoop(): Promise<void> {
 		clearInterval(intervals.updateTimer);
 		clearInterval(intervals.timerCorrection);
 		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
-		breakTimerItem.color = new ThemeColor("statusBarItem.warningForeground");
+		breakTimerItem.color = new ThemeColor(
+			"statusBarItem.warningForeground",
+		);
 		await breakSession(config.get("breakDuration"));
 	}
 }
@@ -140,9 +169,13 @@ function getTimeFactory(
 		if (isNaN(num)) return `Invalid ${name}`;
 		const rangePrompt = `Value should be between ${options.min} and ${options.max}`;
 		if (num < options.min)
-			return `${name} too short. ${isTimeout ? "Counterproductive" : "Eyestrain"} alert! ${rangePrompt}`;
+			return `${name} too short. ${
+				isTimeout ? "Counterproductive" : "Eyestrain"
+			} alert! ${rangePrompt}`;
 		if (num > options.max)
-			return `${name} too long. ${isTimeout ? "Eyestrain" : "Counterproductive"} alert! ${rangePrompt}`;
+			return `${name} too long. ${
+				isTimeout ? "Eyestrain" : "Counterproductive"
+			} alert! ${rangePrompt}`;
 	};
 	return async () => {
 		const input = await window.showInputBox({
@@ -172,10 +205,15 @@ async function breakSession(duration: number): Promise<void> {
 	const breakSec = duration * 60;
 	const breakMs = breakSec * 1e3;
 
-	const panel = window.createWebviewPanel("istrainless.break", "IstrainLess", ViewColumn.One, {
-		enableScripts: true,
-		retainContextWhenHidden: true,
-	});
+	const panel = window.createWebviewPanel(
+		"istrainless.break",
+		"IstrainLess",
+		ViewColumn.One,
+		{
+			enableScripts: true,
+			retainContextWhenHidden: true,
+		},
+	);
 	panel.webview.html = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -243,7 +281,9 @@ async function breakSession(duration: number): Promise<void> {
 	</script>
 	</html>`;
 
-	const forceReveal = panel.onDidChangeViewState(() => panel.reveal(ViewColumn.One));
+	const forceReveal = panel.onDidChangeViewState(() =>
+		panel.reveal(ViewColumn.One),
+	);
 	return await new Promise(async (res) => {
 		const manualEnd = panel.onDidDispose(() => {
 			forceReveal.dispose();

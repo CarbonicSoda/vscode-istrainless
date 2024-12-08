@@ -49,15 +49,18 @@
 		"lint": "eslint src"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.80.0",
 		"@types/mocha": "^10.0.8",
 		"@types/node": "^20.0.0",
+		"@types/vscode": "^1.80.0",
 		"@typescript-eslint/eslint-plugin": "^8.7.0",
 		"@typescript-eslint/parser": "^8.7.0",
-		"eslint": "^9.11.1",
-		"typescript": "^5.6.2",
 		"@vscode/test-cli": "^0.0.10",
-		"@vscode/test-electron": "^2.4.1"
+		"@vscode/test-electron": "^2.4.1",
+		"eslint": "^9.11.1",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.6.2",
+		"webpack": "^5.97.1",
+		"webpack-cli": "^5.1.4"
 	},
 	"contributes": {
 		"commands": [
@@ -87,7 +90,7 @@
 				"properties": {
 					"istrainless.minibreakTimeout": {
 						"type": "number",
-						"default": 10,
+						"default": 15,
 						"description": "Minutes to wait between minibreaks.",
 						"minimum": 5,
 						"maximum": 90,
@@ -95,7 +98,7 @@
 					},
 					"istrainless.minibreakDuration": {
 						"type": "number",
-						"default": 2,
+						"default": 1,
 						"description": "How many minutes a minibreak lasts.",
 						"minimum": 0.25,
 						"maximum": 60,
@@ -103,7 +106,7 @@
 					},
 					"istrainless.breakTimeout": {
 						"type": "number",
-						"default": 40,
+						"default": 60,
 						"description": "Minutes to wait between breaks.",
 						"minimum": 15,
 						"maximum": 150,
@@ -111,10 +114,10 @@
 					},
 					"istrainless.breakDuration": {
 						"type": "number",
-						"default": 10,
+						"default": 3,
 						"description": "How many minutes a break lasts.",
-						"minimum": 5,
-						"maximum": 120,
+						"minimum": 1,
+						"maximum": 30,
 						"order": 4
 					}
 				}
