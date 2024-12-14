@@ -90,7 +90,7 @@
 				"properties": {
 					"istrainless.minibreakTimeout": {
 						"type": "number",
-						"default": 15,
+						"default": 20,
 						"description": "Minutes to wait between minibreaks.",
 						"minimum": 5,
 						"maximum": 90,
