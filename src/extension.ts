@@ -10,137 +10,98 @@ import {
 	workspace,
 } from "vscode";
 
-let breakTimerItem: StatusBarItem | null;
-let intervals: {
+let enabled: boolean;
+let statusBarItem: StatusBarItem;
+const disposableIntervals: {
 	updateTimer?: NodeJS.Timeout;
 	timerCorrection?: NodeJS.Timeout;
 } = {};
-let breakLoopEnabled: boolean;
 
-export function activate(context: ExtensionContext): void {
-	breakLoopEnabled = true;
+export async function activate(context: ExtensionContext): Promise<void> {
 	registerCommands(context);
-	createBreakTimerItem();
-	mainLoop();
+	enabled =
+		(await window.showInformationMessage(
+			`Enable IstrainLess?\n
+			You can enable IstrainLess by clicking on the status bar item later.`,
+			"Yes",
+			"No",
+		)) === "Yes";
+
+	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
+	createStatusBarItem(context);
+	if (enabled) main();
 }
 
 export function deactivate(): void {
-	breakLoopEnabled = false;
-	clearInterval(intervals.updateTimer);
-	clearInterval(intervals.timerCorrection);
-	breakTimerItem.dispose();
+	enabled = false;
+	clearInterval(disposableIntervals.updateTimer);
+	clearInterval(disposableIntervals.timerCorrection);
 }
 
-function registerCommands(context: ExtensionContext): void {
-	context.subscriptions.push(
-		commands.registerCommand(
-			"istrainless.setMinibreakTimeout",
-			getTimeFactory(
-				"Minibreak Timeout",
-				{ min: 5, max: 90 },
-				true,
-				"minibreakTimeout",
-			),
-		),
-		commands.registerCommand(
-			"istrainless.setMinibreakDuration",
-			getTimeFactory(
-				"Minibreak Duration",
-				{ min: 0.25, max: 60 },
-				false,
-				"minibreakDuration",
-			),
-		),
-		commands.registerCommand(
-			"istrainless.setBreakTimeout",
-			getTimeFactory(
-				"Break Timeout",
-				{ min: 15, max: 150 },
-				true,
-				"breakTimeout",
-			),
-		),
-		commands.registerCommand(
-			"istrainless.setBreakDuration",
-			getTimeFactory(
-				"Minibreak Timeout",
-				{ min: 1, max: 30 },
-				false,
-				"breakDuration",
-			),
-		),
-	);
-}
+async function main(): Promise<void> {
+	statusBarItem.text = "";
+	statusBarItem.command = undefined;
+	commands.executeCommand("setContext", "istrainless.enabled", true);
 
-function createBreakTimerItem(): void {
-	breakTimerItem?.dispose();
-	breakTimerItem = window.createStatusBarItem(StatusBarAlignment.Right, -1);
-	breakTimerItem.name = "IstrainLess Timer";
-	breakTimerItem.show();
-}
-
-async function mainLoop(): Promise<void> {
-	let config = workspace.getConfiguration("istrainless");
+	let configs = workspace.getConfiguration("istrainless");
 	workspace.onDidChangeConfiguration((ev) => {
-		if (ev.affectsConfiguration("istrainless"))
-			config = workspace.getConfiguration("istrainless");
+		if (ev.affectsConfiguration("istrainless")) {
+			configs = workspace.getConfiguration("istrainless");
+		}
 	});
 
-	while (breakLoopEnabled) {
-		const minibreakTimeout: number = config.get("minibreakTimeout");
-		let breakTimeout: number = config.get("breakTimeout");
-		if (breakTimeout < minibreakTimeout) breakTimeout = minibreakTimeout;
+	while (enabled) {
+		const minibreakTimeout: number = configs.get("minibreakTimeout");
+		let breakTimeout: number = configs.get("breakTimeout");
+		if (breakTimeout < minibreakTimeout) {
+			breakTimeout = minibreakTimeout;
+		}
 
 		let timeTillMinibreak = minibreakTimeout * 60;
 		let timeTillBreak = breakTimeout * 60;
-		let miniTime30 = 0;
-		let time30 = 0;
+		let miniTime30elapsed = 0;
+		let time30elapsed = 0;
 		let nextIsMinibreak = Math.round(breakTimeout / minibreakTimeout) > 1;
 
 		const updateTimer = () => {
-			const [minibreakTime, breakTime] = [
-				timeTillMinibreak--,
-				timeTillBreak--,
-			];
+			const [minibreakTime, breakTime] = [timeTillMinibreak--, timeTillBreak--];
 			const breakType = nextIsMinibreak ? "Minibreak" : "Break";
 			const timeLeft = nextIsMinibreak ? minibreakTime : breakTime;
 
-			breakTimerItem.text = `$(watch) ${breakType} ${getTime(timeLeft)}`;
-			breakTimerItem.tooltip = new MarkdownString(
+			statusBarItem.text = `$(watch) ${breakType} ${getFormattedTime(timeLeft)}`;
+			statusBarItem.tooltip = new MarkdownString(
 				`Next Minibreak:  \n**${
-					nextIsMinibreak ? getTime(minibreakTime) : "--:--"
-				}**\n\nNext Break:  \n**${getTime(breakTime)}**`,
+					nextIsMinibreak ? getFormattedTime(minibreakTime) : "--:--"
+				}**\n\nNext Break:  \n**${getFormattedTime(breakTime)}**`,
 			);
-			breakTimerItem.color =
-				timeLeft < 60
-					? new ThemeColor("statusBarItem.warningForeground")
-					: null;
+			statusBarItem.color = timeLeft < 60 ? new ThemeColor("statusBarItem.warningForeground") : null;
 		};
 		const timerCorrection = () => {
-			miniTime30++, time30++;
-			timeTillMinibreak = minibreakTimeout * 60 - 30 * miniTime30;
-			timeTillBreak = breakTimeout * 60 - 30 * time30;
+			miniTime30elapsed++;
+			time30elapsed++;
+			timeTillMinibreak = minibreakTimeout * 60 - 30 * miniTime30elapsed;
+			timeTillBreak = breakTimeout * 60 - 30 * time30elapsed;
 		};
-		breakTimerItem.color = null;
+		statusBarItem.color = null;
 		updateTimer();
-		intervals.updateTimer = setInterval(updateTimer, 1e3);
-		intervals.timerCorrection = setInterval(timerCorrection, 3e4);
+		disposableIntervals.updateTimer = setInterval(updateTimer, 1e3);
+		disposableIntervals.timerCorrection = setInterval(timerCorrection, 3e4);
 
 		await setTimedInterval(
 			breakTimeout * 6e4,
 			async () => {
-				clearInterval(intervals.updateTimer);
-				clearInterval(intervals.timerCorrection);
+				clearInterval(disposableIntervals.updateTimer);
+				clearInterval(disposableIntervals.timerCorrection);
 
-				breakTimerItem.text = breakTimerItem.tooltip = "On Minibreak";
-				await breakSession(config.get("minibreakDuration"));
+				statusBarItem.text = statusBarItem.tooltip = "On Minibreak";
+				await breakSession(configs.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
-				miniTime30 = 0;
-				breakTimerItem.color = null;
+				miniTime30elapsed = 0;
+				statusBarItem.color = null;
 				updateTimer();
-				intervals.updateTimer = setInterval(updateTimer, 1e3);
-				intervals.timerCorrection = setInterval(timerCorrection, 3e4);
+				disposableIntervals.updateTimer = setInterval(updateTimer, 1e3);
+				disposableIntervals.timerCorrection = setInterval(timerCorrection, 3e4);
 			},
 			minibreakTimeout * 6e4,
 			{
@@ -148,45 +109,12 @@ async function mainLoop(): Promise<void> {
 			},
 		);
 
-		clearInterval(intervals.updateTimer);
-		clearInterval(intervals.timerCorrection);
-		breakTimerItem.text = breakTimerItem.tooltip = "On Break";
-		breakTimerItem.color = new ThemeColor(
-			"statusBarItem.warningForeground",
-		);
-		await breakSession(config.get("breakDuration"));
+		clearInterval(disposableIntervals.updateTimer);
+		clearInterval(disposableIntervals.timerCorrection);
+		statusBarItem.text = statusBarItem.tooltip = "On Break";
+		statusBarItem.color = new ThemeColor("statusBarItem.warningForeground");
+		await breakSession(configs.get("breakDuration"));
 	}
-}
-
-function getTimeFactory(
-	name: string,
-	options: { min: number; max: number },
-	isTimeout: boolean,
-	configName: string,
-): () => Promise<void> {
-	const validateInput = (input: string) => {
-		const num = parseFloat(input);
-		if (isNaN(num)) return `Invalid ${name}`;
-		const rangePrompt = `Value should be between ${options.min} and ${options.max}`;
-		if (num < options.min)
-			return `${name} too short. ${
-				isTimeout ? "Counterproductive" : "Eyestrain"
-			} alert! ${rangePrompt}`;
-		if (num > options.max)
-			return `${name} too long. ${
-				isTimeout ? "Eyestrain" : "Counterproductive"
-			} alert! ${rangePrompt}`;
-	};
-	return async () => {
-		const input = await window.showInputBox({
-			title: `IstrainLess: ${name}`,
-			prompt: `Enter New ${name} in Minutes`,
-			validateInput: validateInput,
-		});
-		if (!input) return;
-		const config = workspace.getConfiguration("istrainless");
-		await config.update(configName, parseFloat(input), true);
-	};
 }
 
 async function breakSession(duration: number): Promise<void> {
@@ -205,15 +133,9 @@ async function breakSession(duration: number): Promise<void> {
 	const breakSec = duration * 60;
 	const breakMs = breakSec * 1e3;
 
-	const panel = window.createWebviewPanel(
-		"istrainless.break",
-		"IstrainLess",
-		ViewColumn.One,
-		{
-			enableScripts: true,
-			retainContextWhenHidden: true,
-		},
-	);
+	const panel = window.createWebviewPanel("istrainless.break", "IstrainLess", ViewColumn.One, {
+		enableScripts: true,
+	});
 	panel.webview.html = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -259,9 +181,6 @@ async function breakSession(duration: number): Promise<void> {
 				color: var(--vscode-editor-foreground);
 			}
 		</style>
-		<script>
-			const getTime = ${getTime};
-		</script>
 	</head>
 	<body>
 		<div id="main">
@@ -271,28 +190,104 @@ async function breakSession(duration: number): Promise<void> {
 		</div>
 	</body>
 	<script>
+		const getFormattedTime = ${getFormattedTime};
+
 		const timeout = document.getElementById("timeout");
 		const sec = ${Math.round(breakSec)};
+
 		let timeLeft = sec;
-		let time30 = 0;
-		timeout.textContent = getTime(timeLeft--);
-		setInterval(() => (timeout.textContent = getTime(timeLeft--)), 1e3);
-		setInterval(() => (timeLeft = sec - 30 * ++time30 - 1), 3e4);
+		let time30elapsed = 0;
+		timeout.textContent = getFormattedTime(timeLeft--);
+		setInterval(() => (timeout.textContent = getFormattedTime(timeLeft--)), 1e3);
+		setInterval(() => (timeLeft = sec - 30 * ++time30elapsed - 1), 3e4);
 	</script>
 	</html>`;
 
-	const forceReveal = panel.onDidChangeViewState(() =>
-		panel.reveal(ViewColumn.One),
-	);
-	return await new Promise(async (res) => {
-		const manualEnd = panel.onDidDispose(() => {
-			forceReveal.dispose();
-			manualEnd.dispose();
-			res();
+	const forceReveal = panel.onDidChangeViewState(() => panel.reveal(ViewColumn.One));
+
+	commands.executeCommand("workbench.action.hideEditorTabs");
+	await new Promise<void>(async (res) => {
+		const forceOpen = panel.onDidDispose(async () => {
+			forceOpen.dispose();
+			res(breakSession(duration));
 		});
 		await sleep(breakMs);
-		panel.dispose();
+		forceOpen.dispose();
+		res();
 	});
+
+	panel.dispose();
+	forceReveal.dispose();
+	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
+	return;
+}
+
+function registerCommands(context: ExtensionContext): void {
+	context.subscriptions.push(
+		commands.registerCommand("istrainless.enable", () => {
+			enabled = true;
+			main();
+		}),
+		commands.registerCommand(
+			"istrainless.setMinibreakTimeout",
+			getTimeCommandFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
+		),
+		commands.registerCommand(
+			"istrainless.setMinibreakDuration",
+			getTimeCommandFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
+		),
+		commands.registerCommand(
+			"istrainless.setBreakTimeout",
+			getTimeCommandFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
+		),
+		commands.registerCommand(
+			"istrainless.setBreakDuration",
+			getTimeCommandFactory("Minibreak Timeout", { min: 1, max: 30 }, false, "breakDuration"),
+		),
+	);
+}
+
+function getTimeCommandFactory(
+	name: string,
+	options: { min: number; max: number },
+	isTimeout: boolean,
+	configName: string,
+): () => Promise<void> {
+	const validateInput = (input: string) => {
+		const num = parseFloat(input);
+		if (isNaN(num)) return `Invalid ${name}`;
+		const rangePrompt = `Value should be between ${options.min} and ${options.max}`;
+		if (num < options.min) {
+			return `${name} too short. ${
+				isTimeout ? "Counterproductive" : "Eyestrain"
+			} alert! ${rangePrompt}`;
+		}
+		if (num > options.max) {
+			return `${name} too long. ${
+				isTimeout ? "Eyestrain" : "Counterproductive"
+			} alert! ${rangePrompt}`;
+		}
+	};
+	return async () => {
+		const input = await window.showInputBox({
+			title: `IstrainLess: ${name}`,
+			prompt: `Enter New ${name} in Minutes`,
+			validateInput: validateInput,
+		});
+		if (!input) return;
+		const config = workspace.getConfiguration("istrainless");
+		await config.update(configName, parseFloat(input), true);
+	};
+}
+
+function createStatusBarItem(context: ExtensionContext): void {
+	statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, -1);
+	context.subscriptions.push(statusBarItem);
+
+	statusBarItem.name = "IstrainLess Timer";
+	statusBarItem.text = "Enable IstrainLess";
+	statusBarItem.command = "istrainless.enable";
+	statusBarItem.show();
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -315,7 +310,7 @@ async function setTimedInterval(
 	await sleep(timeout - ms * rep);
 }
 
-function getTime(sec: number): string {
+function getFormattedTime(sec: number): string {
 	const m = Math.trunc(sec / 60);
 	const s = Math.trunc(sec - m * 60);
 	return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;

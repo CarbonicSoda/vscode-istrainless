@@ -65,6 +65,12 @@
 	"contributes": {
 		"commands": [
 			{
+				"command": "istrainless.enable",
+				"title": "Enable IstrainLess",
+				"category": "IstrainLess",
+				"enablement": "!istrainless.enabled"
+			},
+			{
 				"command": "istrainless.setMinibreakTimeout",
 				"title": "Set Minibreak Timeout",
 				"category": "IstrainLess"
