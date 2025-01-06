@@ -97,13 +97,13 @@
 					"istrainless.confirmOnStartup": {
 						"type": "boolean",
 						"default": true,
-						"description": "Confirm enablement on startup.",
+						"description": "Whether IstrainLess asks for confirmation before starting the timer.",
 						"order": 1
 					},
 					"istrainless.allowEscape": {
 						"type": "boolean",
 						"default": false,
-						"description": "Allow escaping from break session.",
+						"description": "Disable escaping penalty and directly skips the session if attempted.",
 						"order": 2
 					},
 					"istrainless.minibreakTimeout": {
