@@ -203,21 +203,25 @@ async function breakSession(duration: number): Promise<void> {
 	</script>
 	</html>`;
 
-	const forceReveal = panel.onDidChangeViewState(() => panel.reveal(ViewColumn.One));
-
 	commands.executeCommand("workbench.action.hideEditorTabs");
 	await new Promise<void>(async (res) => {
-		const forceOpen = panel.onDidDispose(async () => {
+		const dispose = () => {
+			forceReveal.dispose();
 			forceOpen.dispose();
+		};
+		const penalty = () => {
+			dispose();
 			res(breakSession(duration));
-		});
+		};
+		const forceReveal = panel.onDidChangeViewState(penalty);
+		const forceOpen = panel.onDidDispose(penalty);
+
 		await sleep(breakMs);
-		forceOpen.dispose();
+		dispose();
 		res();
 	});
 
 	panel.dispose();
-	forceReveal.dispose();
 	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
 	return;
 }
