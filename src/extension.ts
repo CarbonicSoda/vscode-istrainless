@@ -26,7 +26,9 @@ const disposableIntervals: {
 
 export async function activate(context: ExtensionContext): Promise<void> {
 	registerCommands(context);
+
 	enabled =
+		!configs.get("confirmOnStartup") ||
 		(await window.showInformationMessage(
 			`Enable IstrainLess?\n
 			You can enable IstrainLess by clicking on the status bar item later.`,
