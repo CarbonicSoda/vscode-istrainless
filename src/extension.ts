@@ -30,14 +30,21 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	registerCommands(context);
 	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
 
-	enabled =
-		!configs.get("confirmOnStartup") ||
-		(await window.showInformationMessage(
+	enabled = !(<boolean>configs.get("confirmOnStartup"));
+	if (!enabled) {
+		const prompt = await window.showInformationMessage(
 			`Enable IstrainLess?\n
 			You can enable IstrainLess by clicking on the status bar item later.`,
 			"Yes",
 			"No",
-		)) === "Yes";
+			"Always",
+		);
+		if (prompt === "Yes") enabled = true;
+		if (prompt === "Always") {
+			enabled = true;
+			configs.update("confirmOnStartup", false, true);
+		}
+	}
 
 	createStatusBarItem(context);
 	if (enabled) main();
@@ -246,24 +253,24 @@ function registerCommands(context: ExtensionContext): void {
 		}),
 		commands.registerCommand(
 			"istrainless.setMinibreakTimeout",
-			getTimeCommandFactory("Minibreak Timeout", { rec: 20, min: 10, max: 60 }, true, "minibreakTimeout"),
+			setTimeoutOrDurationFactory("Minibreak Timeout", { rec: 20, min: 10, max: 60 }, true, "minibreakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setMinibreakDuration",
-			getTimeCommandFactory("Minibreak Duration", { rec: 20, min: 10, max: 60 }, false, "minibreakDuration"),
+			setTimeoutOrDurationFactory("Minibreak Duration", { rec: 20, min: 10, max: 60 }, false, "minibreakDuration"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakTimeout",
-			getTimeCommandFactory("Break Timeout", { rec: 60, min: 30, max: 180 }, true, "breakTimeout"),
+			setTimeoutOrDurationFactory("Break Timeout", { rec: 60, min: 30, max: 180 }, true, "breakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakDuration",
-			getTimeCommandFactory("Break Duration", { rec: 60, min: 30, max: 180 }, false, "breakDuration"),
+			setTimeoutOrDurationFactory("Break Duration", { rec: 60, min: 30, max: 180 }, false, "breakDuration"),
 		),
 	);
 }
 
-function getTimeCommandFactory(
+function setTimeoutOrDurationFactory(
 	name: string,
 	options: { rec: number; min: number; max: number },
 	isTimeout: boolean,
