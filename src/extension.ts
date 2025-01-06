@@ -10,6 +10,13 @@ import {
 	workspace,
 } from "vscode";
 
+let configs = workspace.getConfiguration("istrainless");
+workspace.onDidChangeConfiguration((ev) => {
+	if (ev.affectsConfiguration("istrainless")) {
+		configs = workspace.getConfiguration("istrainless");
+	}
+});
+
 let enabled: boolean;
 let statusBarItem: StatusBarItem;
 const disposableIntervals: {
@@ -43,16 +50,9 @@ async function main(): Promise<void> {
 	statusBarItem.command = undefined;
 	commands.executeCommand("setContext", "istrainless.enabled", true);
 
-	let configs = workspace.getConfiguration("istrainless");
-	workspace.onDidChangeConfiguration((ev) => {
-		if (ev.affectsConfiguration("istrainless")) {
-			configs = workspace.getConfiguration("istrainless");
-		}
-	});
-
 	while (enabled) {
-		const minibreakTimeout: number = configs.get("minibreakTimeout");
-		let breakTimeout: number = configs.get("breakTimeout");
+		const minibreakTimeout = <number>configs.get("minibreakTimeout");
+		let breakTimeout = <number>configs.get("breakTimeout");
 		if (breakTimeout < minibreakTimeout) {
 			breakTimeout = minibreakTimeout;
 		}
@@ -94,7 +94,7 @@ async function main(): Promise<void> {
 				clearInterval(disposableIntervals.timerCorrection);
 
 				statusBarItem.text = statusBarItem.tooltip = "On Minibreak";
-				await breakSession(configs.get("minibreakDuration"));
+				await breakSession(<number>configs.get("minibreakDuration"));
 
 				timeTillMinibreak = minibreakTimeout * 60;
 				miniTime30elapsed = 0;
@@ -113,7 +113,7 @@ async function main(): Promise<void> {
 		clearInterval(disposableIntervals.timerCorrection);
 		statusBarItem.text = statusBarItem.tooltip = "On Break";
 		statusBarItem.color = new ThemeColor("statusBarItem.warningForeground");
-		await breakSession(configs.get("breakDuration"));
+		await breakSession(<number>configs.get("breakDuration"));
 	}
 }
 
@@ -203,18 +203,26 @@ async function breakSession(duration: number): Promise<void> {
 	</script>
 	</html>`;
 
-	commands.executeCommand("workbench.action.hideEditorTabs");
+	const allowEscape = <boolean>configs.get("allowEscape");
+	if (!allowEscape) commands.executeCommand("workbench.action.hideEditorTabs");
+
 	await new Promise<void>(async (res) => {
 		const dispose = () => {
 			forceReveal.dispose();
 			forceOpen.dispose();
 		};
-		const penalty = () => {
-			dispose();
-			res(breakSession(duration));
-		};
-		const forceReveal = panel.onDidChangeViewState(penalty);
-		const forceOpen = panel.onDidDispose(penalty);
+
+		const onEscapeAttempt = allowEscape
+			? () => {
+					dispose();
+					res();
+			  }
+			: () => {
+					dispose();
+					res(breakSession(duration));
+			  };
+		const forceReveal = panel.onDidChangeViewState(onEscapeAttempt);
+		const forceOpen = panel.onDidDispose(onEscapeAttempt);
 
 		await sleep(breakMs);
 		dispose();
@@ -222,7 +230,7 @@ async function breakSession(duration: number): Promise<void> {
 	});
 
 	panel.dispose();
-	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
+	if (!allowEscape) commands.executeCommand("workbench.action.showMultipleEditorTabs");
 	return;
 }
 
