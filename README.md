@@ -1,5 +1,5 @@
 <h3 align="center" style="margin-bottom: -10px">
-	<img src="https://raw.githubusercontent.com/CarbonicSoda/vscode-istrainless/master/media/icon.png" width="100" alt="LaTeX Fold Icon">
+	<img src="https://raw.githubusercontent.com/CarbonicSoda/vscode-istrainless/master/media/icon.png" width="100" alt="IstrainLess Icon">
 	<p></p>
 	Away From Eyestrain
 </h3>
