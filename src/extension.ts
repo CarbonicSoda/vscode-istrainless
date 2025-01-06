@@ -28,6 +28,7 @@ const disposables: {
 
 export async function activate(context: ExtensionContext): Promise<void> {
 	registerCommands(context);
+	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
 
 	enabled =
 		!configs.get("confirmOnStartup") ||
@@ -38,7 +39,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 			"No",
 		)) === "Yes";
 
-	await commands.executeCommand("workbench.action.showMultipleEditorTabs");
 	createStatusBarItem(context);
 	if (enabled) main();
 }
