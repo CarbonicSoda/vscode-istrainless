@@ -94,37 +94,49 @@
 		"configuration": [
 			{
 				"properties": {
+					"istrainless.confirmOnStartup": {
+						"type": "boolean",
+						"default": true,
+						"description": "Confirm enablement on startup.",
+						"order": 1
+					},
+					"istrainless.allowEscape": {
+						"type": "boolean",
+						"default": false,
+						"description": "Allow escaping from break session.",
+						"order": 2
+					},
 					"istrainless.minibreakTimeout": {
 						"type": "number",
 						"default": 20,
 						"description": "Minutes to wait between minibreaks.",
-						"minimum": 5,
-						"maximum": 90,
-						"order": 1
+						"minimum": 10,
+						"maximum": 60,
+						"order": 3
 					},
 					"istrainless.minibreakDuration": {
 						"type": "number",
-						"default": 1,
-						"description": "How many minutes a minibreak lasts.",
-						"minimum": 0.25,
+						"default": 20,
+						"description": "How many seconds a minibreak lasts.",
+						"minimum": 10,
 						"maximum": 60,
-						"order": 2
+						"order": 4
 					},
 					"istrainless.breakTimeout": {
 						"type": "number",
 						"default": 60,
 						"description": "Minutes to wait between breaks.",
-						"minimum": 15,
-						"maximum": 150,
-						"order": 3
+						"minimum": 30,
+						"maximum": 180,
+						"order": 5
 					},
 					"istrainless.breakDuration": {
 						"type": "number",
-						"default": 3,
-						"description": "How many minutes a break lasts.",
-						"minimum": 1,
-						"maximum": 30,
-						"order": 4
+						"default": 60,
+						"description": "How many seconds a break lasts.",
+						"minimum": 30,
+						"maximum": 180,
+						"order": 6
 					}
 				}
 			}

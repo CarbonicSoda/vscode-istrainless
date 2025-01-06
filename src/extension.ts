@@ -5,6 +5,7 @@ import {
 	StatusBarItem,
 	ThemeColor,
 	ViewColumn,
+	WebviewPanel,
 	commands,
 	window,
 	workspace,
@@ -19,7 +20,8 @@ workspace.onDidChangeConfiguration((ev) => {
 
 let enabled: boolean;
 let statusBarItem: StatusBarItem;
-const disposableIntervals: {
+const disposables: {
+	sessionPanel?: WebviewPanel;
 	updateTimer?: NodeJS.Timeout;
 	timerCorrection?: NodeJS.Timeout;
 } = {};
@@ -43,8 +45,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
 
 export function deactivate(): void {
 	enabled = false;
-	clearInterval(disposableIntervals.updateTimer);
-	clearInterval(disposableIntervals.timerCorrection);
+	disposables.sessionPanel.dispose();
+	clearInterval(disposables.updateTimer);
+	clearInterval(disposables.timerCorrection);
 }
 
 async function main(): Promise<void> {
@@ -86,14 +89,14 @@ async function main(): Promise<void> {
 		};
 		statusBarItem.color = null;
 		updateTimer();
-		disposableIntervals.updateTimer = setInterval(updateTimer, 1e3);
-		disposableIntervals.timerCorrection = setInterval(timerCorrection, 3e4);
+		disposables.updateTimer = setInterval(updateTimer, 1000);
+		disposables.timerCorrection = setInterval(timerCorrection, 30000);
 
 		await setTimedInterval(
-			breakTimeout * 6e4,
+			breakTimeout * 60000,
 			async () => {
-				clearInterval(disposableIntervals.updateTimer);
-				clearInterval(disposableIntervals.timerCorrection);
+				clearInterval(disposables.updateTimer);
+				clearInterval(disposables.timerCorrection);
 
 				statusBarItem.text = statusBarItem.tooltip = "On Minibreak";
 				await breakSession(<number>configs.get("minibreakDuration"));
@@ -102,24 +105,24 @@ async function main(): Promise<void> {
 				miniTime30elapsed = 0;
 				statusBarItem.color = null;
 				updateTimer();
-				disposableIntervals.updateTimer = setInterval(updateTimer, 1e3);
-				disposableIntervals.timerCorrection = setInterval(timerCorrection, 3e4);
+				disposables.updateTimer = setInterval(updateTimer, 1000);
+				disposables.timerCorrection = setInterval(timerCorrection, 30000);
 			},
-			minibreakTimeout * 6e4,
+			minibreakTimeout * 60000,
 			{
 				cleanup: () => (nextIsMinibreak = false),
 			},
 		);
 
-		clearInterval(disposableIntervals.updateTimer);
-		clearInterval(disposableIntervals.timerCorrection);
+		clearInterval(disposables.updateTimer);
+		clearInterval(disposables.timerCorrection);
 		statusBarItem.text = statusBarItem.tooltip = "On Break";
 		statusBarItem.color = new ThemeColor("statusBarItem.warningForeground");
 		await breakSession(<number>configs.get("breakDuration"));
 	}
 }
 
-async function breakSession(duration: number): Promise<void> {
+async function breakSession(seconds: number): Promise<void> {
 	const quotes = [
 		"Closing your eyes allows you to see the world more clearly.",
 		"Gaze into the distance, let your eyes relax and wander. This far-off focus will ease the strain.",
@@ -132,12 +135,11 @@ async function breakSession(duration: number): Promise<void> {
 		"When your eyes feel tired, lift your gaze and let it drift to the horizon. This long-distance view will soothe and restore them.",
 		"Your eyes are the most precious jewels you will ever own.",
 	];
-	const breakSec = duration * 60;
-	const breakMs = breakSec * 1e3;
 
 	const panel = window.createWebviewPanel("istrainless.break", "IstrainLess", ViewColumn.One, {
 		enableScripts: true,
 	});
+	disposables.sessionPanel = panel;
 	panel.webview.html = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -174,7 +176,7 @@ async function breakSession(duration: number): Promise<void> {
 				height: 4%;
 				border-radius: 3px;
 				background-color: var(--vscode-editor-foreground);
-				animation: timeout ${breakSec}s linear;
+				animation: timeout ${seconds}s linear;
 			}
 			#timeout {
 				font-family: var(--vscode-editor-font-family);
@@ -195,13 +197,13 @@ async function breakSession(duration: number): Promise<void> {
 		const getFormattedTime = ${getFormattedTime};
 
 		const timeout = document.getElementById("timeout");
-		const sec = ${Math.round(breakSec)};
+		const sec = ${Math.round(seconds)};
 
 		let timeLeft = sec;
 		let time30elapsed = 0;
 		timeout.textContent = getFormattedTime(timeLeft--);
-		setInterval(() => (timeout.textContent = getFormattedTime(timeLeft--)), 1e3);
-		setInterval(() => (timeLeft = sec - 30 * ++time30elapsed - 1), 3e4);
+		setInterval(() => (timeout.textContent = getFormattedTime(timeLeft--)), 1000);
+		setInterval(() => (timeLeft = sec - 30 * ++time30elapsed - 1), 30000);
 	</script>
 	</html>`;
 
@@ -221,12 +223,12 @@ async function breakSession(duration: number): Promise<void> {
 			  }
 			: () => {
 					dispose();
-					res(breakSession(duration));
+					res(breakSession(seconds));
 			  };
 		const forceReveal = panel.onDidChangeViewState(onEscapeAttempt);
 		const forceOpen = panel.onDidDispose(onEscapeAttempt);
 
-		await sleep(breakMs);
+		await sleep(seconds * 1000);
 		dispose();
 		res();
 	});
@@ -244,53 +246,50 @@ function registerCommands(context: ExtensionContext): void {
 		}),
 		commands.registerCommand(
 			"istrainless.setMinibreakTimeout",
-			getTimeCommandFactory("Minibreak Timeout", { min: 5, max: 90 }, true, "minibreakTimeout"),
+			getTimeCommandFactory("Minibreak Timeout", { rec: 20, min: 10, max: 60 }, true, "minibreakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setMinibreakDuration",
-			getTimeCommandFactory("Minibreak Duration", { min: 0.25, max: 60 }, false, "minibreakDuration"),
+			getTimeCommandFactory("Minibreak Duration", { rec: 20, min: 10, max: 60 }, false, "minibreakDuration"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakTimeout",
-			getTimeCommandFactory("Break Timeout", { min: 15, max: 150 }, true, "breakTimeout"),
+			getTimeCommandFactory("Break Timeout", { rec: 60, min: 30, max: 180 }, true, "breakTimeout"),
 		),
 		commands.registerCommand(
 			"istrainless.setBreakDuration",
-			getTimeCommandFactory("Minibreak Timeout", { min: 1, max: 30 }, false, "breakDuration"),
+			getTimeCommandFactory("Break Duration", { rec: 60, min: 30, max: 180 }, false, "breakDuration"),
 		),
 	);
 }
 
 function getTimeCommandFactory(
 	name: string,
-	options: { min: number; max: number },
+	options: { rec: number; min: number; max: number },
 	isTimeout: boolean,
 	configName: string,
 ): () => Promise<void> {
+	const rangePrompt = `Value should be between ${options.min} and ${options.max} (default ${options.rec})`;
+
 	const validateInput = (input: string) => {
 		const num = parseFloat(input);
 		if (isNaN(num)) return `Invalid ${name}`;
-		const rangePrompt = `Value should be between ${options.min} and ${options.max}`;
 		if (num < options.min) {
-			return `${name} too short. ${
-				isTimeout ? "Counterproductive" : "Eyestrain"
-			} alert! ${rangePrompt}`;
+			return `${name} too short. ${rangePrompt}`;
 		}
 		if (num > options.max) {
-			return `${name} too long. ${
-				isTimeout ? "Eyestrain" : "Counterproductive"
-			} alert! ${rangePrompt}`;
+			return `${name} too long. ${rangePrompt}`;
 		}
 	};
+
 	return async () => {
 		const input = await window.showInputBox({
 			title: `IstrainLess: ${name}`,
-			prompt: `Enter New ${name} in Minutes`,
-			validateInput: validateInput,
+			prompt: `Enter New ${name} in ${isTimeout ? "Minutes" : "Seconds"}`,
+			validateInput,
 		});
 		if (!input) return;
-		const config = workspace.getConfiguration("istrainless");
-		await config.update(configName, parseFloat(input), true);
+		configs.update(configName, parseFloat(input), true);
 	};
 }
 
