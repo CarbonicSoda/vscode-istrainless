@@ -4,8 +4,6 @@
 	Away From Eyestrain
 </h3>
 
-<br>
-
 ## Features
 
 A set-time break reminder with:
