@@ -1,4 +1,5 @@
 src
+media\showcase.gif
 .vscode
 .gitignore
 eslint.config.mjs
