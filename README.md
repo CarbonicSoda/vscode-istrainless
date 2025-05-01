@@ -1,8 +1,9 @@
-<h3 align="center" style="margin-bottom: -10px">
+<h3 align="center">
 	<img src="https://raw.githubusercontent.com/CarbonicSoda/vscode-istrainless/master/media/icon.png" width="100" alt="IstrainLess Icon">
 	<p></p>
-	Away From Eyestrain
+	IstrainLess for VSCode
 </h3>
+<h4 align="center">Away From Eyestrain</h4>
 
 ## Features
 
@@ -19,7 +20,7 @@ To keep _you_ away from eyestrain!
 
 > _Escaping break sessions early will give a penalty!_
 
-### Customizations
+## Customizations
 
 Minibreaks' and Breaks' **timeout** and **duration** could be modified
 
