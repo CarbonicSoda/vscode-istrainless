@@ -1,7 +1,7 @@
-src
-media\showcase.gif
-.vscode
 .gitignore
-eslint.config.mjs
-tsconfig.json
+.vscode
 **/*.map
+eslint.config.mjs
+media
+src
+tsconfig.json
