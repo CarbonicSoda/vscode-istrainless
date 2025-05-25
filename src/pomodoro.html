@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			html, body {
+				height: 100%;
+			}
+
+			body {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+
+				color: var(--vscode-editor-foreground);
+			    font: var(--vscode-editor-font-weight) calc(var(--vscode-editor-font-size) * 1.5)
+			             var(--vscode-editor-font-family);
+			}
+
+			@keyframes elapse {
+				from {width: 85%}
+				to {width: 0}
+			}
+			#bar {
+				height: 1.5rem;
+				margin-block: 1.5rem;
+				border-radius: 0.5rem;
+				background-color: var(--vscode-editor-foreground);
+				animation: elapse ${duration}s linear;
+			}
+		</style>
+	</head>
+	<body>
+		<p style="max-width: 85%">${quotes[~~(quotes.length * Math.random())]}</p>
+		<div id="bar"></div>
+		<p id="time"></p>
+		<script>
+			const time = document.getElementById("time");
+
+			const start = Date.now();
+			const tick = () => {
+				const now = Date.now();
+				const delta = now - start;
+
+				time.textContent = new Date(${duration} * 1000 - delta)
+					.toJSON()
+					.slice(14, -5);
+			};
+			tick();
+			const update = setInterval(tick, 500);
+		</script>
+	</body>
+</html>

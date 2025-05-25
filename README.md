@@ -7,36 +7,15 @@
 
 ## Features
 
-A set-time break reminder with:
+Minimalist opinionated reminder extension to keep you away from eyestrain.
 
--   Minibreaks and Breaks
--   Friendly break timer in status bar
--   Elegant visuals and beautiful quotes
--   Easy customizations
+![SHOWCASE](https://github.com/CarbonicSoda/vscode-istrainless/blob/master/media/showcase.png?raw=true)
 
-To keep _you_ away from eyestrain!
+> Cycles are opinionated as 25m-5m > 25m-5m > 25m-25m.
 
-![SHOWCASE](https://github.com/CarbonicSoda/vscode-istrainless/blob/master/media/showcase.gif?raw=true)
-
-> _Escaping break sessions early will give a penalty!_
-
-## Customizations
-
-Minibreaks' and Breaks' **timeout** and **duration** could be modified
-
--   Through commands (_Ctrl+Shift+P_): "_IstrainLess: Set ..._"
--   Directly in settings
-
-A few more flags are available in settings:
-
--   `confirmOnStartup`: Whether IstrainLess asks for confirmation before starting the timer.
--   `allowEscape`: Disable escaping penalty and directly skips the session if attempted.
-
-###
+> Escaping break sessions early will result in a penalty.
 
 ---
-
-###
 
 &emsp;_Rest your eyes,  
 _&emsp;_&emsp;Let them wander and explore the world at their own pace._
