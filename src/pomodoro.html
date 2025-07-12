@@ -13,8 +13,8 @@
 				justify-content: center;
 
 				color: var(--vscode-editor-foreground);
-			    font: var(--vscode-editor-font-weight) calc(var(--vscode-editor-font-size) * 1.5)
-			             var(--vscode-editor-font-family);
+			    	font: var(--vscode-editor-font-weight) calc(var(--vscode-editor-font-size) * 1.5)
+				      var(--vscode-editor-font-family);
 			}
 
 			@keyframes elapse {
@@ -31,7 +31,9 @@
 		</style>
 	</head>
 	<body>
-		<p style="max-width: 85%">${quotes[~~(quotes.length * Math.random())]}</p>
+		<p style="max-width: 85%; text-align: center">
+			${quotes[~~(quotes.length * Math.random())]}
+		</p>
 		<div id="bar"></div>
 		<p id="time"></p>
 		<script>

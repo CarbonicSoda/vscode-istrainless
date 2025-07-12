@@ -60,7 +60,7 @@ async function pomodori(duration: number): Promise<void> {
 	// minified from ./pomodoro.html
 	panel.webview.html = `<!DOCTYPE html><html><head><style>html,body{height:100%}body{color:var(--vscode-editor-foreground);font:var(--vscode-editor-font-weight)calc(var(--vscode-editor-font-size)*1.5)var(--vscode-editor-font-family);flex-direction:column;justify-content:center;align-items:center;display:flex}@keyframes elapse{0%{width:85%}to{width:0}}#bar{background-color:var(--vscode-editor-foreground);border-radius:.5rem;height:1.5rem;margin-block:1.5rem;animation:${
 		duration - 1
-	}s linear elapse}</style></head><body><p style="max-width:85%">${
+	}s linear elapse}</style></head><body><p style="max-width:85%;text-align:center">${
 		quotes[~~(quotes.length * Math.random())]
 	}</p><div id="bar"></div><p id="time"></p><script>const t=document.getElementById("time"),e=Date.now(),n=()=>{const n=Date.now()-e;t.textContent=new Date(${
 		duration * 1000
