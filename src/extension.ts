@@ -1,10 +1,4 @@
-import {
-	ExtensionContext,
-	StatusBarAlignment,
-	StatusBarItem,
-	ViewColumn,
-	window,
-} from "vscode";
+import { ExtensionContext, StatusBarAlignment, StatusBarItem, ViewColumn, window } from "vscode";
 
 export function activate(context: ExtensionContext): void {
 	const hint = window.createStatusBarItem(StatusBarAlignment.Right, -1);
@@ -13,7 +7,7 @@ export function activate(context: ExtensionContext): void {
 	hint.name = "IstrainLess";
 	hint.show();
 
-	main(hint);
+	void main(hint);
 }
 
 async function main(hint: StatusBarItem, progress = 0): Promise<void> {
@@ -37,7 +31,7 @@ async function main(hint: StatusBarItem, progress = 0): Promise<void> {
 	const duration = progress !== 2 ? 5 * 60 : 25 * 60;
 	await pomodori(duration);
 
-	main(hint, ++progress % 3);
+	void main(hint, ++progress % 3);
 }
 
 async function pomodori(duration: number): Promise<void> {
@@ -50,23 +44,20 @@ async function pomodori(duration: number): Promise<void> {
 		"Let your eyes feast upon the world, give them moments of tranquil rest from constant seeking.",
 	];
 
-	const panel = window.createWebviewPanel(
-		"Pomodori",
-		"IstrainLess",
-		ViewColumn.One,
-		{ enableScripts: true },
-	);
+	const panel = window.createWebviewPanel("Pomodori", "IstrainLess", ViewColumn.One, {
+		enableScripts: true,
+	});
 
 	// minified from ./pomodoro.html
-	panel.webview.html = `<!DOCTYPE html><html><head><style>html,body{height:100%}body{color:var(--vscode-editor-foreground);font:var(--vscode-editor-font-weight)calc(var(--vscode-editor-font-size)*1.5)var(--vscode-editor-font-family);flex-direction:column;justify-content:center;align-items:center;display:flex}@keyframes elapse{0%{width:85%}to{width:0}}#bar{background-color:var(--vscode-editor-foreground);border-radius:.5rem;height:1.5rem;margin-block:1.5rem;animation:${
+	panel.webview.html = `<!DOCTYPE html><html><head><style>html,body{height:100%}body{color:var(--vscode-editor-foreground);font:var(--vscode-editor-font-weight)calc(var(--vscode-editor-font-size)*1.5)var(--vscode-editor-font-family);flex-direction:column;justify-content:center;align-items:center;display:flex}@keyframes elapse{0%{width:85%}to{width:0}}#bar{background-color:var(--vscode-editor-foreground);border-radius:.5rem;height:1.5rem;margin-block:1.5rem;animation:${(
 		duration - 1
-	}s linear elapse}</style></head><body><p style="max-width:85%;text-align:center">${
+	).toFixed()}s linear elapse}</style></head><body><p style="max-width:85%;text-align:center">${
 		quotes[~~(quotes.length * Math.random())]
-	}</p><div id="bar"></div><p id="time"></p><script>const t=document.getElementById("time"),e=Date.now(),n=()=>{const n=Date.now()-e;t.textContent=new Date(${
+	}</p><div id="bar"></div><p id="time"></p><script>const t=document.getElementById("time"),e=Date.now(),n=()=>{const n=Date.now()-e;t.textContent=new Date(${(
 		duration * 1000
-	}-n).toJSON().slice(14,-5)};n();setInterval(n,500)</script></body></html>`;
+	).toFixed()}-n).toJSON().slice(14,-5)};n();setInterval(n,500)</script></body></html>`;
 
-	await new Promise<void>(async (res) => {
+	await new Promise<void>((res) => {
 		const dispose = () => {
 			reopen.dispose();
 			reveal.dispose();
@@ -80,11 +71,13 @@ async function pomodori(duration: number): Promise<void> {
 		const reopen = panel.onDidDispose(onEscape);
 		const reveal = panel.onDidChangeViewState(onEscape);
 
-		await new Promise((res) => setTimeout(res, duration * 1000));
-
-		dispose();
-		res();
+		setTimeout(() => {
+			dispose();
+			res();
+		}, duration * 1000);
 	});
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+	/* empty */
+}

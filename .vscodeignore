@@ -1,7 +1,8 @@
 .gitignore
 .vscode
+**/*.config.mjs
 **/*.map
-eslint.config.mjs
 media/showcase.png
+pnpm-lock.yaml
 src
 tsconfig.json
