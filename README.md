@@ -11,9 +11,7 @@ Minimalist opinionated reminder extension to keep you away from eyestrain.
 
 ![SHOWCASE](https://github.com/CarbonicSoda/vscode-istrainless/blob/master/media/showcase.png?raw=true)
 
-> Cycles are opinionated as 25m-5m > 25m-5m > 25m-25m.
-
-> Escaping break sessions early will result in a penalty.
+> Cycles are 25m-5m > 25m-5m > 25m-25m. Escaping break sessions early will result in a penalty.
 
 ---
 
