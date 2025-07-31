@@ -7,14 +7,14 @@
 	"author": {
 		"name": "David W."
 	},
-	"homepage": "https://github.com/CarbonicSoda/vscode-istrainless/blob/master/README.md",
+	"homepage": "https://github.com/wavim/vscode-istrainless/blob/master/README.md",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/CarbonicSoda/vscode-istrainless"
+		"url": "https://github.com/wavim/vscode-istrainless"
 	},
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/CarbonicSoda/vscode-istrainless/issues",
+		"url": "https://github.com/wavim/vscode-istrainless/issues",
 		"email": "carbonsoda@outlook.com"
 	},
 	"engines": {
